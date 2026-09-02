@@ -1,0 +1,37 @@
+{
+  "name": "best-dialog",
+  "version": "1.0.0",
+  "description": "轻量精美的 Vue3 对话框组件，支持 Nuxt",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/module.ts",
+      "types": "./src/module.ts"
+    },
+    "./runtime": {
+      "import": "./src/runtime/index.ts",
+      "types": "./src/runtime/index.ts"
+    }
+  },
+  "main": "./src/module.ts",
+  "types": "./src/module.ts",
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "vue3",
+    "nuxt",
+    "dialog",
+    "modal",
+    "component"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "vue": ">=3.3.0"
+  },
+  "devDependencies": {
+    "@nuxt/kit": "^3.16.0",
+    "vue": "^3.5.0",
+    "typescript": "^5.7.0"
+  }
+}
