@@ -15,23 +15,23 @@ export default defineNuxtModule({
     // 注册全局组件
     addComponent({
       name: 'BestDialog',
-      filePath: resolve('./runtime/index'),
+      filePath: resolve('./index'),
       export: 'BestDialog',
     })
 
     // 自动导入 composables
     addImports([
-      { name: 'useDialog',  from: resolve('./runtime/index') },
-      { name: 'showDialog', from: resolve('./runtime/index') },
+      { name: 'useDialog',  from: resolve('./index') },
+      { name: 'showDialog', from: resolve('./index') },
     ])
 
     // 注册插件（挂载全局容器 + 样式）
     addPlugin({
-      src: resolve('./runtime/plugin'),
+      src: resolve('./plugin'),
       mode: 'client',
     })
 
     // 注册 CSS
-    nuxt.options.css.push(resolve('./runtime/style.css'))
+    nuxt.options.css.push(resolve('./style.css'))
   },
 })

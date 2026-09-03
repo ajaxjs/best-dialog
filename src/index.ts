@@ -1,6 +1,7 @@
 import {
   defineComponent,
   ref,
+  shallowRef,
   computed,
   watch,
   onMounted,
@@ -64,6 +65,8 @@ export interface DialogOptions {
   zIndex?: number
   onOpen?: () => void
   onClose?: (e: DialogCloseEvent) => void
+  onOk?: (value?: any) => void
+  onCancel?: (e: DialogCloseEvent) => void
   [key: string]: any
 }
 
@@ -81,10 +84,20 @@ const store = ref<StoreItem[]>([])
 let _uid = 0
 function uid() { return `bd-${++_uid}` }
 
+// markRaw 内容/标题组件，避免存入响应式 store 时被 Proxy 代理
+// （否则 Vue 运行时会警告 "Component made a reactive object"）
+function sanitizeOptions(o: DialogOptions): DialogOptions {
+  const r = { ...o }
+  if (r.content && typeof r.content === 'object') r.content = markRaw(r.content)
+  if (r.title && typeof r.title === 'object') r.title = markRaw(r.title)
+  return r
+}
+
 function storeAdd(id: string, options: DialogOptions) {
+  const o = sanitizeOptions(options)
   const existing = store.value.find(d => d.id === id)
-  if (existing) { existing.options = options; existing.visible = true }
-  else store.value.push({ id, visible: true, options })
+  if (existing) { existing.options = o; existing.visible = true }
+  else store.value.push({ id, visible: true, options: o })
 }
 
 function storeHide(id: string) {
@@ -102,6 +115,11 @@ function storeClose(id: string, e?: DialogCloseEvent) {
   if (!item) return
   item.visible = false
   item.options.onClose?.(e || { source: 'overlay', index: -1 })
+  // 语义回调：primary 按钮点击 → onOk；取消按钮 / 叉叉 / ESC / 遮罩 → onCancel
+  if (e) {
+    if (e.source === 'button' && e.button?.primary) item.options.onOk?.()
+    else item.options.onCancel?.(e)
+  }
   setTimeout(() => storeRemove(id), 420)
 }
 
@@ -113,6 +131,7 @@ export interface DialogHandle {
   close: () => void
   onClose: (cb: (e: DialogCloseEvent) => void) => DialogHandle
   onOk: (cb: (value?: any) => void) => DialogHandle
+  onCancel: (cb: (e: DialogCloseEvent) => void) => DialogHandle
   open: (opts?: DialogOptions) => DialogHandle
   alert: (content: string, title?: string) => DialogHandle
   confirm: (content: string, title?: string) => DialogHandle
@@ -121,10 +140,13 @@ export interface DialogHandle {
 
 export function useDialog(defaults: DialogOptions = {}): DialogHandle {
   const id = uid()
-  const options = ref<DialogOptions>({ ...defaults })
+  // shallowRef：避免 defaults 中的内容组件被深层 reactive 代理
+  const options = shallowRef<DialogOptions>({ ...defaults })
 
   let _onClose: ((e: DialogCloseEvent) => void) | null = null
   let _onOk: ((value?: any) => void) | null = null
+  let _onCancel: ((e: DialogCloseEvent) => void) | null = null
+  let _okValue: (() => any) | undefined
   let _closing = false
 
   onUnmounted(() => storeRemove(id))
@@ -142,9 +164,11 @@ export function useDialog(defaults: DialogOptions = {}): DialogHandle {
     if (opts) options.value = { ...options.value, ...opts }
     _onClose = null
     _onOk = null
+    _onCancel = null
+    _okValue = undefined
     _closing = false
 
-    // 包装 onClose，使链式 .onClose() 与 store 的 onClose 打通
+    // 包装回调，使链式 .onClose() / .onOk() / .onCancel() 与 store 的 options 回调打通
     const userOnClose = options.value.onClose
     options.value.onClose = (e: DialogCloseEvent) => {
       userOnClose?.(e)
@@ -152,6 +176,18 @@ export function useDialog(defaults: DialogOptions = {}): DialogHandle {
         _closing = true
         _onClose?.(e)
       }
+    }
+
+    const userOnOk = options.value.onOk
+    options.value.onOk = () => {
+      userOnOk?.(_okValue?.())
+      _onOk?.(_okValue?.())
+    }
+
+    const userOnCancel = options.value.onCancel
+    options.value.onCancel = (e: DialogCloseEvent) => {
+      userOnCancel?.(e)
+      _onCancel?.(e)
     }
 
     storeAdd(id, options.value)
@@ -172,6 +208,11 @@ export function useDialog(defaults: DialogOptions = {}): DialogHandle {
       return handle
     },
 
+    onCancel(cb) {
+      _onCancel = cb
+      return handle
+    },
+
     open,
 
     alert(content, title) {
@@ -189,11 +230,7 @@ export function useDialog(defaults: DialogOptions = {}): DialogHandle {
         content,
         actions: [
           { label: '取消' },
-          {
-            label: '确定',
-            primary: true,
-            onClick: () => { _onOk?.() },
-          },
+          { label: '确定', primary: true },
         ],
       })
       return handle
@@ -217,13 +254,11 @@ export function useDialog(defaults: DialogOptions = {}): DialogHandle {
         content: PromptInput,
         actions: [
           { label: '取消' },
-          {
-            label: '确定',
-            primary: true,
-            onClick: () => { _onOk?.(inputVal.value) },
-          },
+          { label: '确定', primary: true },
         ],
       })
+      // onOk 取值器：点击确定时回传输入值
+      _okValue = () => inputVal.value
       return handle
     },
   }
@@ -417,7 +452,7 @@ export const BestDialog = defineComponent({
     dialogClass:   { type: [String, Array, Object] as PropType<any>, default: undefined },
     dialogStyle:   { type: [String, Object] as PropType<CSSProperties | string>, default: undefined },
   },
-  emits: ['update:modelValue', 'open', 'close'],
+  emits: ['update:modelValue', 'open', 'close', 'ok', 'cancel'],
   setup(props, { emit, slots }) {
     const localVisible = ref(props.modelValue)
     const effect = computed(() => props.effect || effectForPos(props.position))
@@ -431,6 +466,11 @@ export const BestDialog = defineComponent({
       localVisible.value = false
       emit('update:modelValue', false)
       emit('close', e)
+      // primary 按钮点击 → ok；取消按钮 / 叉叉 / ESC / 遮罩 → cancel
+      if (e) {
+        if (e.source === 'button' && e.button?.primary) emit('ok')
+        else emit('cancel', e)
+      }
     }
 
     function onKey(e: KeyboardEvent) {

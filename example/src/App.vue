@@ -44,6 +44,8 @@
         <button @click="showConfirm">确认对话框</button>
         <button @click="showAsync">异步按钮</button>
         <button @click="showLink">链接按钮</button>
+        <button @click="showComponent">组件内容</button>
+        <button @click="showCancelDemo">onOk / onCancel</button>
       </div>
     </section>
 
@@ -132,8 +134,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { BestDialog, useDialog, showDialog, type DialogCloseEvent } from '../../src/runtime/index'
+import { ref, defineComponent, h } from 'vue'
+import { BestDialog, useDialog, showDialog, type DialogCloseEvent } from '../../src/index'
 
 // ── 模板组件状态 ──
 const basicShow = ref(false)
@@ -178,6 +180,9 @@ function dialogConfirm() {
   dialog.confirm('确定要删除这条记录吗？', '确认删除')
     .onOk(() => {
       console.log('[confirm] 用户确认了删除')
+    })
+    .onCancel(() => {
+      console.log('[confirm] 用户取消了删除')
     })
     .onClose((e) => {
       console.log('[confirm] 关闭来源:', e.source, 'index:', e.index, 'button:', e.button)
@@ -243,6 +248,48 @@ function showLink() {
       '取消',
       { as: 'a', label: '前往 GitHub', href: 'https://github.com', target: '_blank', primary: true },
     ],
+  })
+}
+
+// ── 组件内容：content 直接传 Vue 组件（内部已自动 markRaw，无响应式警告） ──
+const CounterContent = defineComponent({
+  setup() {
+    const count = ref(0)
+    return () => h('div', { style: 'text-align:center' }, [
+      h('p', { style: 'color:#4e5969;margin-bottom:12px' }, '这是一个通过 content 传入的 Vue 组件，可正常交互：'),
+      h('button', {
+        style: 'padding:6px 20px;border:1px solid #165dff;border-radius:6px;background:#165dff;color:#fff;cursor:pointer',
+        onClick: () => { count.value++ },
+      }, `点击次数：${count.value}`),
+    ])
+  },
+})
+
+function showComponent() {
+  showDialog({
+    title: '组件内容',
+    content: CounterContent,
+    width: 380,
+    actions: [
+      '取消',
+      { label: '确定', primary: true },
+    ],
+    onOk: () => console.log('[组件] onOk：点击了确定'),
+    onCancel: (e) => console.log('[组件] onCancel：来源', e.source),
+  })
+}
+
+// ── onOk / onCancel 语义回调演示 ──
+function showCancelDemo() {
+  showDialog({
+    title: 'onOk / onCancel',
+    content: '点击「取消」按钮、右上角叉叉、按 ESC 或点击遮罩，均触发 onCancel；点击「确定」触发 onOk。',
+    actions: [
+      '取消',
+      { label: '确定', primary: true },
+    ],
+    onOk: () => console.log('[demo] onOk：点击了确定'),
+    onCancel: (e) => console.log('[demo] onCancel：来源', e.source),
   })
 }
 

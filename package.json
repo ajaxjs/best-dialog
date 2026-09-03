@@ -5,18 +5,22 @@
   "type": "module",
   "exports": {
     ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    },
+    "./module": {
       "import": "./dist/module.mjs",
-      "types": "./dist/module.d.ts"
+      "types": "./dist/module.d.mts"
     },
-    "./runtime": {
-      "import": "./dist/runtime/index.mjs",
-      "types": "./dist/runtime/index.d.ts"
+    "./nuxt": {
+      "import": "./dist/module.mjs",
+      "types": "./dist/module.d.mts"
     },
-    "./dist/runtime/style.css": "./dist/runtime/style.css"
+    "./style.css": "./dist/style.css"
   },
-  "main": "./dist/module.mjs",
-  "module": "./dist/module.mjs",
-  "types": "./dist/module.d.ts",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "files": [
     "dist"
   ],

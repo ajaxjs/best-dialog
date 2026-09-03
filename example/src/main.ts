@@ -1,6 +1,6 @@
 import { createApp, h } from 'vue'
-import { BestDialogContainer } from '../../src/runtime/index'
-import '../../src/runtime/style.css'
+import { BestDialogContainer } from '../../src/index'
+import '../../src/style.css'
 import App from './App.vue'
 
 // 挂载主应用

@@ -6,11 +6,12 @@
 
 - **三种调用方式** — 模板组件 / 组合式（链式 API）/ 函数式
 - **高级方法** — `alert` / `confirm` / `prompt` 开箱即用
+- **语义回调** — `onOk` / `onCancel`，确定、取消、叉叉、ESC 一目了然
 - **精美动画** — zoom / slide / fade 三种过渡效果，GPU 加速
 - **灵活定位** — 9 种位置（center / top / bottom / left / right / 四角）
-- **丰富内容** — 文本 / HTML / iframe / Vue 组件 / 插槽
+- **丰富内容** — 文本 / HTML / iframe / Vue 组件 / 插槽（组件自动 `markRaw`，无响应式警告）
 - **actions 插槽** — 完全自定义底部按钮区域
-- **事件信息** — `onClose(e)` 返回触发事件详情（按钮 index / btn 配置）
+- **事件信息** — `onClose(e)` 返回触发事件详情（source / 按钮索引 / 按钮配置）
 - **暗色模式** — 自动跟随系统 `prefers-color-scheme`
 - **响应式** — 移动端自适应布局
 - **无障碍** — ARIA 属性 + ESC 关闭
@@ -42,8 +43,8 @@ npm install best-dialog
 ```ts
 // main.ts
 import { createApp, h } from 'vue'
-import { BestDialogContainer } from 'best-dialog/runtime'
-import 'best-dialog/src/runtime/style.css'
+import { BestDialogContainer } from 'best-dialog'
+import 'best-dialog/style.css'
 
 const app = createApp(App)
 
@@ -54,6 +55,8 @@ createApp({ render: () => h(BestDialogContainer) }).mount(el)
 
 app.mount('#app')
 ```
+
+> 若只使用模板组件 `<BestDialog>`，可以省略容器挂载。
 
 ---
 
@@ -68,7 +71,7 @@ app.mount('#app')
   <!-- 基础 -->
   <BestDialog v-model="show" title="提示" content="内容"
     :actions="['取消', { label: '确定', primary: true }]"
-    @close="onClose" />
+    @ok="onOk" @cancel="onCancel" @close="onClose" />
 
   <!-- 插槽 -->
   <BestDialog v-model="show2">
@@ -91,16 +94,15 @@ const dialog = useDialog({
 })
 
 // ── 基础 ──
-const close = dialog.open()            // 返回 close 方法
-const close2 = dialog.open({ content: '新内容' }) // 合并新选项
+dialog.open()                          // 打开（返回 handle，支持链式）
+dialog.open({ content: '新内容' })      // 合并新选项
+dialog.close()                         // 关闭
 
-// ── 链式 onClose ──
+// ── 链式回调 ──
 dialog.open()
-  .onClose((e) => {
-    console.log('关闭来源:', e.source)         // 'button' | 'overlay' | 'close-btn' | 'esc'
-    console.log('按钮索引:', e.currentTarget.dataset.index)
-    console.log('按钮配置:', e.currentTarget.dataset.btn)
-  })
+  .onOk(() => { /* 点击了 primary 按钮 */ })
+  .onCancel((e) => { /* 取消按钮 / 叉叉 / ESC / 遮罩 */ })
+  .onClose((e) => { /* 任何方式关闭 */ })
 
 // ── alert ──
 dialog.alert('操作成功！')
@@ -108,7 +110,7 @@ dialog.alert('操作成功！')
 // ── confirm ──
 dialog.confirm('确定删除吗？')
   .onOk(() => { /* 用户点了确定 */ })
-  .onClose((e) => { /* 任何方式关闭 */ })
+  .onCancel(() => { /* 用户点了取消 */ })
 
 // ── prompt ──
 dialog.prompt('请输入您的姓名')
@@ -126,6 +128,37 @@ const close = showDialog({
 
 setTimeout(close, 3000)
 ```
+
+### 4. 语义回调 `onOk` / `onCancel`
+
+除 `onClose` 外，所有 API 均支持语义回调，关闭来源自动归类：
+
+| 关闭方式 | onOk | onCancel |
+|---------|------|----------|
+| 点击 primary 按钮（确定） | ✅ | — |
+| 点击普通按钮（取消） | — | ✅ |
+| 点击右上角叉叉 | — | ✅ |
+| 按 ESC | — | ✅ |
+| 点击遮罩 | — | ✅ |
+
+```ts
+// showDialog：options 直接传
+showDialog({
+  title: '删除确认',
+  content: '确定要删除这条记录吗？',
+  actions: ['取消', { label: '确定', primary: true }],
+  onOk: () => doDelete(),
+  onCancel: (e) => console.log('取消来源:', e.source),
+})
+
+// useDialog：链式或 options 均可
+dialog.confirm('确定删除吗？').onOk(doDelete)
+
+// BestDialog 组件：@ok / @cancel 事件
+<BestDialog v-model="show" @ok="doOk" @cancel="onCancel" />
+```
+
+> `prompt` 的 `onOk` 回调参数为输入框的值。
 
 ---
 
@@ -167,19 +200,17 @@ setTimeout(close, 3000)
 |------|------|------|
 | `update:modelValue` | `boolean` | v-model 更新 |
 | `open` | — | 打开 |
-| `close` | `DialogCloseEvent` | 关闭（含事件信息）|
+| `close` | `DialogCloseEvent` | 任何方式关闭（含事件信息）|
+| `ok` | — | 点击 primary 按钮 |
+| `cancel` | `DialogCloseEvent` | 取消按钮 / 叉叉 / ESC / 遮罩 |
 
 ### DialogCloseEvent
 
 ```ts
 interface DialogCloseEvent {
-  source: 'button' | 'overlay' | 'close-btn' | 'esc'
-  currentTarget: {
-    dataset: {
-      index?: number    // 按钮索引
-      btn?: DialogAction // 按钮配置
-    }
-  }
+  source: 'button' | 'overlay' | 'close-btn' | 'esc'  // 关闭来源
+  index: number                                       // 按钮索引，非按钮关闭为 -1
+  button?: DialogAction                               // 按钮配置（source 为 button 时）
 }
 ```
 
@@ -190,17 +221,21 @@ interface DialogCloseEvent {
 ```ts
 const dialog = useDialog(options?)
 
-dialog.open(opts?)          // 打开，返回 close 函数
-  .onClose(e => {})         // 链式：关闭回调
-  .onOk(value => {})        // 链式：确认回调（confirm/prompt 用）
-
+dialog.open(opts?)          // 打开，返回 DialogHandle（可继续链式）
 dialog.close()              // 关闭
 
-dialog.alert(content, title?)                  // 快捷提示
-dialog.confirm(content, title?).onOk(() => {})  // 确认框
-dialog.prompt(placeholder?, title?, default?)   // 输入框
-     .onOk(value => {})
+// DialogHandle 链式回调
+dialog.open()
+  .onOk(value => {})        // 确认回调（prompt 的 value 为输入值）
+  .onCancel(e => {})        // 取消回调（取消按钮 / 叉叉 / ESC / 遮罩）
+  .onClose(e => {})         // 任意关闭回调
+
+dialog.alert(content, title?)                     // 快捷提示
+dialog.confirm(content, title?)                   // 确认框
+dialog.prompt(placeholder?, title?, default?)    // 输入框
 ```
+
+`options` 中也可以直接声明 `onOk` / `onCancel` / `onClose`，与链式回调等价（两者会同时触发）。
 
 ---
 
@@ -214,7 +249,7 @@ type DialogActionItem = string | {
   href?: string
   target?: string
   class?: string
-  primary?: boolean   // 默认最后一个为 primary
+  primary?: boolean   // 默认最后一个按钮为 primary
 }
 ```
 
@@ -254,6 +289,15 @@ showDialog({
 ```
 
 动画自动匹配：center→zoom，其他→slide（方向自适应）。可通过 `effect` 覆盖。
+
+---
+
+## 内容渲染优先级
+
+`default 插槽` > `url`（iframe）> `content`：
+- `content` 为字符串 → 文本段落
+- `content` 为字符串且 `html: true` → HTML 渲染
+- `content` 为 Vue 组件 → 直接渲染（内部自动 `markRaw`，避免响应式代理警告）
 
 ---
 
