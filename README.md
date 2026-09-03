@@ -2,6 +2,8 @@
 
 轻量、精美、丝滑的 Vue3 对话框组件，原生支持 Nuxt 3。
 
+**[在线演示 Demo](https://ajaxjs.github.io/best-dialog/)** · [GitHub](https://github.com/ajaxjs/best-dialog)
+
 ## 特性
 
 - **三种调用方式** — 模板组件 / 组合式（链式 API）/ 函数式
