@@ -31,7 +31,7 @@ export default defineNuxtConfig({
 })
 ```
 
-安装后即可直接使用 `<BestDialog>`、`useDialog`、`showDialog`，无需手动导入。
+> 安装后即可直接使用 `<BestDialog>`、`useDialog`、`showDialog`，无需手动导入。
 
 ### Vue 3 (Vite / Webpack)
 

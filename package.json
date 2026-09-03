@@ -1,36 +1,65 @@
 {
   "name": "best-dialog",
   "version": "1.0.0",
-  "description": "轻量精美的 Vue3 对话框组件，支持 Nuxt",
+  "description": "Lightweight, beautiful Vue3 dialog component with Nuxt 3 support. Template / Composable / Functional API with alert, confirm, prompt.",
   "type": "module",
   "exports": {
     ".": {
-      "import": "./src/module.ts",
-      "types": "./src/module.ts"
+      "import": "./dist/module.mjs",
+      "types": "./dist/module.d.ts"
     },
     "./runtime": {
-      "import": "./src/runtime/index.ts",
-      "types": "./src/runtime/index.ts"
-    }
+      "import": "./dist/runtime/index.mjs",
+      "types": "./dist/runtime/index.d.ts"
+    },
+    "./dist/runtime/style.css": "./dist/runtime/style.css"
   },
-  "main": "./src/module.ts",
-  "types": "./src/module.ts",
+  "main": "./dist/module.mjs",
+  "module": "./dist/module.mjs",
+  "types": "./dist/module.d.ts",
   "files": [
-    "src"
+    "dist"
   ],
+  "scripts": {
+    "build": "unbuild",
+    "prepublishOnly": "npm run build",
+    "pub": "npm version patch && pnpm publish --no-git-checks",
+    "pub:minor": "npm version minor && pnpm publish --no-git-checks",
+    "pub:major": "npm version major && pnpm publish --no-git-checks"
+  },
   "keywords": [
+    "vue",
     "vue3",
     "nuxt",
+    "nuxt3",
     "dialog",
     "modal",
-    "component"
+    "alert",
+    "confirm",
+    "prompt",
+    "component",
+    "ui"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ajaxjs/best-dialog.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ajaxjs/best-dialog/issues"
+  },
+  "homepage": "https://github.com/ajaxjs/best-dialog#readme",
   "peerDependencies": {
     "vue": ">=3.3.0"
   },
+  "peerDependenciesMeta": {
+    "@nuxt/kit": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@nuxt/kit": "^3.16.0",
+    "unbuild": "^3.5.0",
     "vue": "^3.5.0",
     "typescript": "^5.7.0"
   }
