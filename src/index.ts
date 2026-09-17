@@ -29,7 +29,7 @@ export type DialogContentType = string | object | null | undefined
 
 export interface DialogAction {
   label?: string
-  onClick?: (close: () => void) => void | Promise<void> | boolean
+  onClick?: (close: () => void) => void | boolean | Promise<void | boolean>
   as?: 'button' | 'a'
   href?: string
   target?: string
@@ -392,7 +392,7 @@ function renderDialogBox(
   }
 
   return h('div', {
-    class: ['bd-overlay', pos, { 'bd-fullscreen': isFS }],
+    class: ['bd-overlay', pos, { 'bd-fullscreen': isFS, 'no-overlay': !showOverlay }],
     style: showOverlay ? undefined : { background: 'transparent', pointerEvents: 'none' },
     onClick: (e: MouseEvent) => {
       if (e.target === e.currentTarget && o.overlayClose !== false) {

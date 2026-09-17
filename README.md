@@ -246,7 +246,7 @@ dialog.prompt(placeholder?, title?, default?)    // 输入框
 ```ts
 type DialogActionItem = string | {
   label?: string
-  onClick?: (close: () => void) => void | Promise<void> | boolean
+  onClick?: (close: () => void) => void | boolean | Promise<void | boolean>
   as?: 'button' | 'a'
   href?: string
   target?: string

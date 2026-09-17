@@ -50,11 +50,16 @@
   justify-content: center;
   z-index: 2000;
   background: var(--bd-overlay-bg);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   padding: 24px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.bd-overlay.no-overlay {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* ── Positions ─────────────────────────────────────────────── */
@@ -87,6 +92,7 @@
   line-height: 1.6;
   color: var(--bd-text);
   overflow: hidden;
+  pointer-events: all;
 }
 
 .bd-dialog--fullscreen {
