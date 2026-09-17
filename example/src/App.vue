@@ -23,6 +23,7 @@
           open(新内容)
         </button>
         <button @click="dialogChained">open().onClose()</button>
+        <button @click="openPostCard">open(VNode 组件)</button>
       </div>
     </section>
 
@@ -46,6 +47,7 @@
         <button @click="showLink">链接按钮</button>
         <button @click="showComponent">组件内容</button>
         <button @click="showCancelDemo">onOk / onCancel</button>
+        <button @click="showPostCardFn">showDialog(VNode)</button>
       </div>
     </section>
 
@@ -136,6 +138,7 @@
 <script setup lang="ts">
 import { ref, defineComponent, h } from 'vue'
 import { BestDialog, useDialog, showDialog, type DialogCloseEvent } from '../../src/index'
+import PostCard from './PostCard.vue'
 
 // ── 模板组件状态 ──
 const basicShow = ref(false)
@@ -173,6 +176,14 @@ function dialogChained() {
         console.log('[链式] 按钮配置:', e.button)
       }
     })
+}
+
+// ── 完全自定义 UI：open() 直接传 VNode（h() 包裹组件，可传 props） ──
+const cardDialog = useDialog({ width: 380 })
+
+function openPostCard() {
+  cardDialog.open(h(PostCard, { title: 'Post Card', close: () => cardDialog.close() }))
+    .onClose((e) => console.log('[VNode] 关闭来源:', e.source))
 }
 
 // confirm 用法
@@ -277,6 +288,14 @@ function showComponent() {
     onOk: () => console.log('[组件] onOk：点击了确定'),
     onCancel: (e) => console.log('[组件] onCancel：来源', e.source),
   })
+}
+
+// ── showDialog 也可直接传 VNode / 组件，完全自定义弹窗 UI ──
+function showPostCardFn() {
+  const close = showDialog(h(PostCard, {
+    title: 'Post Card',
+    close: () => close(), // 把关闭函数传给组件，由组件内部触发
+  }))
 }
 
 // ── onOk / onCancel 语义回调演示 ──

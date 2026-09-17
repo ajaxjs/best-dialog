@@ -8,10 +8,12 @@ import {
   onUnmounted,
   h,
   markRaw,
+  isVNode,
   Teleport,
   Transition,
   type PropType,
   type CSSProperties,
+  type Component,
   type VNode,
 } from 'vue'
 
@@ -68,6 +70,36 @@ export interface DialogOptions {
   onOk?: (value?: any) => void
   onCancel?: (e: DialogCloseEvent) => void
   [key: string]: any
+}
+
+/**
+ * open() / showDialog() 的入参：
+ * - DialogOptions：完整配置
+ * - VNode / Vue 组件：完全自定义弹窗 UI，等价于 { content: 传入值 }
+ */
+export type DialogInput = DialogOptions | VNode | Component
+
+// ────────────────────────────────────────────────────────────
+// Input normalize — 入参归一化
+// ────────────────────────────────────────────────────────────
+
+// 组件判定：函数（函数式组件）或带 render/setup/template 的对象
+function isComponentDef(v: unknown): v is Component {
+  return (
+    typeof v === 'function' ||
+    (v !== null && typeof v === 'object' && (
+      typeof (v as any).render === 'function' ||
+      typeof (v as any).setup === 'function' ||
+      typeof (v as any).template === 'string'
+    ))
+  )
+}
+
+// VNode / 组件包装为 { content }；普通对象原样作为 DialogOptions
+function normalizeInput(input?: DialogInput): DialogOptions {
+  if (!input) return {}
+  if (isVNode(input) || isComponentDef(input)) return { content: input }
+  return input as DialogOptions
 }
 
 // ────────────────────────────────────────────────────────────
@@ -132,7 +164,7 @@ export interface DialogHandle {
   onClose: (cb: (e: DialogCloseEvent) => void) => DialogHandle
   onOk: (cb: (value?: any) => void) => DialogHandle
   onCancel: (cb: (e: DialogCloseEvent) => void) => DialogHandle
-  open: (opts?: DialogOptions) => DialogHandle
+  open: (input?: DialogInput) => DialogHandle
   alert: (content: string, title?: string) => DialogHandle
   confirm: (content: string, title?: string) => DialogHandle
   prompt: (placeholder?: string, title?: string, defaultValue?: string) => DialogHandle
@@ -160,8 +192,8 @@ export function useDialog(defaults: DialogOptions = {}): DialogHandle {
     setTimeout(() => { storeRemove(id); _closing = false }, 420)
   }
 
-  function open(opts?: DialogOptions): DialogHandle {
-    if (opts) options.value = { ...options.value, ...opts }
+  function open(input?: DialogInput): DialogHandle {
+    if (input) options.value = { ...options.value, ...normalizeInput(input) }
     _onClose = null
     _onOk = null
     _onCancel = null
@@ -270,10 +302,11 @@ export function useDialog(defaults: DialogOptions = {}): DialogHandle {
 // showDialog
 // ────────────────────────────────────────────────────────────
 
-export function showDialog(options: DialogOptions) {
+export function showDialog(options: DialogInput) {
+  const o = normalizeInput(options)
   const id = uid()
-  storeAdd(id, options)
-  options.onOpen?.()
+  storeAdd(id, o)
+  o.onOpen?.()
   const close = (e?: DialogCloseEvent) => storeClose(id, e)
   return close
 }
@@ -370,6 +403,8 @@ function renderDialogBox(
     body = h('div', { class: 'bd-dialog__html', innerHTML: o.content })
   } else if (typeof o.content === 'string') {
     body = h('p', { class: 'bd-dialog__text' }, o.content)
+  } else if (isVNode(o.content)) {
+    body = [o.content]
   } else if (o.content) {
     body = [h(o.content as any)]
   }
@@ -379,7 +414,9 @@ function renderDialogBox(
   if (o.title) {
     titleNode = typeof o.title === 'string'
       ? h('span', { class: 'bd-dialog__title' }, o.title)
-      : Array.isArray(o.title) ? o.title : h(o.title as any)
+      : isVNode(o.title) ? o.title
+      : Array.isArray(o.title) ? o.title
+      : h(o.title as any)
   }
 
   // 底部: actions 插槽优先

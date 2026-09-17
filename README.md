@@ -100,6 +100,15 @@ dialog.open()                          // 打开（返回 handle，支持链式�
 dialog.open({ content: '新内容' })      // 合并新选项
 dialog.close()                         // 关闭
 
+// ── 完全自定义 UI：直接传 VNode / 组件 ──
+import { h } from 'vue'
+import PostCard from './PostCard.vue'
+
+dialog.open(h(PostCard, { title: 'Post Card' }))
+// 等价于 dialog.open({ content: h(PostCard, { title: 'Post Card' }) })
+// 需在组件内部关闭时，把 close 作为 props 传入：
+// dialog.open(h(PostCard, { close: () => dialog.close() }))
+
 // ── 链式回调 ──
 dialog.open()
   .onOk(() => { /* 点击了 primary 按钮 */ })
@@ -129,6 +138,9 @@ const close = showDialog({
 })
 
 setTimeout(close, 3000)
+
+// 也可直接传 VNode / 组件，完全自定义弹窗 UI
+const close2 = showDialog(h(PostCard, { title: 'Post Card', close: () => close2() }))
 ```
 
 ### 4. 语义回调 `onOk` / `onCancel`
@@ -172,7 +184,7 @@ dialog.confirm('确定删除吗？').onOk(doDelete)
 |------|------|--------|------|
 | `modelValue` | `boolean` | `false` | v-model 控制显隐 |
 | `title` | `string \| Component` | — | 标题 |
-| `content` | `string \| Component` | — | 内容 |
+| `content` | `string \| Component \| VNode` | — | 内容 |
 | `html` | `boolean` | `false` | HTML 渲染 content |
 | `url` | `string` | — | iframe 地址（优先于 content）|
 | `actions` | `DialogActionItem[]` | — | 底部按钮 |
@@ -223,7 +235,7 @@ interface DialogCloseEvent {
 ```ts
 const dialog = useDialog(options?)
 
-dialog.open(opts?)          // 打开，返回 DialogHandle（可继续链式）
+dialog.open(input?)          // 打开：DialogOptions / VNode / 组件，返回 DialogHandle（可继续链式）
 dialog.close()              // 关闭
 
 // DialogHandle 链式回调
