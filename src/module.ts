@@ -9,7 +9,7 @@ export default defineNuxtModule({
     },
   },
   defaults: {},
-  setup(_options, nuxt) {
+  setup(_options: any, nuxt: any) {
     const { resolve } = createResolver(import.meta.url)
 
     // 注册全局组件
