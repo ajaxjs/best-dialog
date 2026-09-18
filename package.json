@@ -1,6 +1,6 @@
 {
   "name": "best-dialog",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Lightweight, beautiful Vue3 dialog component with Nuxt 3 support. Template / Composable / Functional API with alert, confirm, prompt.",
   "type": "module",
   "exports": {
