@@ -178,8 +178,9 @@ function dialogChained() {
     })
 }
 
-// ── 完全自定义 UI：open() 直接传 VNode（h() 包裹组件，可传 props） ──
-const cardDialog = useDialog({ width: 380 })
+// ── 完全自定义 UI：open() 直接传 VNode，组件完全替换 bd-dialog 卡片 ──
+// 结构为 .bd-overlay > 组件：遮罩/定位/动画/ESC 保留，UI 全由 PostCard 决定
+const cardDialog = useDialog()
 
 function openPostCard() {
   cardDialog.open(h(PostCard, { title: 'Post Card', close: () => cardDialog.close() }))
@@ -290,7 +291,7 @@ function showComponent() {
   })
 }
 
-// ── showDialog 也可直接传 VNode / 组件，完全自定义弹窗 UI ──
+// ── showDialog 也可直接传 VNode / 组件，完全替换弹窗卡片 ──
 function showPostCardFn() {
   const close = showDialog(h(PostCard, {
     title: 'Post Card',

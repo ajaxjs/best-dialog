@@ -149,7 +149,6 @@
 .bd-dialog__title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--bd-text);
   line-height: 1.5;
   display: block;
 }
@@ -170,7 +169,6 @@
 
 .bd-dialog__text {
   margin: 0;
-  color: var(--bd-text-secondary);
   line-height: 1.7;
 }
 

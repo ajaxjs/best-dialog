@@ -53,6 +53,11 @@ export interface DialogOptions {
   content?: DialogContentType
   html?: boolean
   url?: string
+  /**
+   * 完全自定义弹窗 UI：VNode / 组件直接替换 bd-dialog 卡片（.bd-overlay > 组件）。
+   * open()/showDialog() 直传组件时由 normalizeInput 自动填充。
+   */
+  component?: VNode | Component
   actions?: DialogActionItem[]
   position?: DialogPosition
   effect?: DialogEffect
@@ -75,7 +80,7 @@ export interface DialogOptions {
 /**
  * open() / showDialog() 的入参：
  * - DialogOptions：完整配置
- * - VNode / Vue 组件：完全自定义弹窗 UI，等价于 { content: 传入值 }
+ * - VNode / Vue 组件：完全替换弹窗卡片（.bd-overlay > 组件），UI 由组件决定
  */
 export type DialogInput = DialogOptions | VNode | Component
 
@@ -95,10 +100,10 @@ function isComponentDef(v: unknown): v is Component {
   )
 }
 
-// VNode / 组件包装为 { content }；普通对象原样作为 DialogOptions
+// VNode / 组件包装为 { component }（完全替换 bd-dialog 卡片）；普通对象原样作为 DialogOptions
 function normalizeInput(input?: DialogInput): DialogOptions {
   if (!input) return {}
-  if (isVNode(input) || isComponentDef(input)) return { content: input }
+  if (isVNode(input) || isComponentDef(input)) return { component: input }
   return input as DialogOptions
 }
 
@@ -116,12 +121,13 @@ const store = ref<StoreItem[]>([])
 let _uid = 0
 function uid() { return `bd-${++_uid}` }
 
-// markRaw 内容/标题组件，避免存入响应式 store 时被 Proxy 代理
+// markRaw 内容/标题/组件，避免存入响应式 store 时被 Proxy 代理
 // （否则 Vue 运行时会警告 "Component made a reactive object"）
 function sanitizeOptions(o: DialogOptions): DialogOptions {
   const r = { ...o }
   if (r.content && typeof r.content === 'object') r.content = markRaw(r.content)
   if (r.title && typeof r.title === 'object') r.title = markRaw(r.title)
+  if (r.component && typeof r.component === 'object') r.component = markRaw(r.component)
   return r
 }
 
@@ -193,7 +199,13 @@ export function useDialog(defaults: DialogOptions = {}): DialogHandle {
   }
 
   function open(input?: DialogInput): DialogHandle {
-    if (input) options.value = { ...options.value, ...normalizeInput(input) }
+    if (input) {
+      const opts = normalizeInput(input)
+      // options 为累积合并：非组件模式下清除残留的 component，
+      // 避免上次 open(组件) 导致后续 alert/confirm 等也被替换
+      if (!('component' in opts)) opts.component = undefined
+      options.value = { ...options.value, ...opts }
+    }
     _onClose = null
     _onOk = null
     _onCancel = null
@@ -380,52 +392,81 @@ function renderDialogBox(
 ): VNode {
   const pos = o.position || 'center'
   const showOverlay = o.overlay !== false
-  const showClose = o.closable !== false
   const isFS = !!o.fullscreen
-  const w = o.width ?? '440px'
-  const wStyle = typeof w === 'number' ? `${w}px` : w
 
-  const dStyle: CSSProperties = {
-    ...(typeof o.style === 'string' ? {} : (o.style as CSSProperties || {})),
-    ...(isFS ? {} : { width: wStyle }),
-    ...(o.zIndex ? { zIndex: o.zIndex } : {}),
-  }
+  // 弹窗主体节点：
+  // - component 模式（open()/showDialog() 直传 VNode / 组件）：
+  //   组件完全替换 bd-dialog 卡片，结构为 .bd-overlay > 组件，UI 由组件决定
+  // - 标准模式：渲染 bd-dialog 卡片（外壳 + 标题 + 内容 + 底部）
+  let box: VNode
+  if (o.component) {
+    box = isVNode(o.component) ? o.component : h(o.component)
+  } else {
+    const showClose = o.closable !== false
+    const w = o.width ?? '440px'
+    const wStyle = typeof w === 'number' ? `${w}px` : w
 
-  const actions = normActions(o.actions)
+    const dStyle: CSSProperties = {
+      ...(typeof o.style === 'string' ? {} : (o.style as CSSProperties || {})),
+      ...(isFS ? {} : { width: wStyle }),
+      ...(o.zIndex ? { zIndex: o.zIndex } : {}),
+    }
 
-  // 内容
-  let body: any = null
-  if (bodySlot) {
-    body = bodySlot
-  } else if (o.url) {
-    body = h('iframe', { src: o.url, class: 'bd-dialog__iframe', frameborder: '0', allow: 'fullscreen' })
-  } else if (o.html && typeof o.content === 'string') {
-    body = h('div', { class: 'bd-dialog__html', innerHTML: o.content })
-  } else if (typeof o.content === 'string') {
-    body = h('p', { class: 'bd-dialog__text' }, o.content)
-  } else if (isVNode(o.content)) {
-    body = [o.content]
-  } else if (o.content) {
-    body = [h(o.content as any)]
-  }
+    const actions = normActions(o.actions)
 
-  // 标题
-  let titleNode: any = null
-  if (o.title) {
-    titleNode = typeof o.title === 'string'
-      ? h('span', { class: 'bd-dialog__title' }, o.title)
-      : isVNode(o.title) ? o.title
-      : Array.isArray(o.title) ? o.title
-      : h(o.title as any)
-  }
+    // 内容
+    let body: any = null
+    if (bodySlot) {
+      body = bodySlot
+    } else if (o.url) {
+      body = h('iframe', { src: o.url, class: 'bd-dialog__iframe', frameborder: '0', allow: 'fullscreen' })
+    } else if (o.html && typeof o.content === 'string') {
+      body = h('div', { class: 'bd-dialog__html', innerHTML: o.content })
+    } else if (typeof o.content === 'string') {
+      body = h('p', { class: 'bd-dialog__text' }, o.content)
+    } else if (isVNode(o.content)) {
+      body = [o.content]
+    } else if (o.content) {
+      body = [h(o.content as any)]
+    }
 
-  // 底部: actions 插槽优先
-  let footer: any = null
-  if (actionsSlot) {
-    footer = h('div', { class: 'bd-dialog__footer' }, actionsSlot)
-  } else if (actions.length > 0) {
-    footer = h('div', { class: 'bd-dialog__footer' },
-      actions.map((a, i) => renderBtn(a, close, i === actions.length - 1, i)))
+    // 标题
+    let titleNode: any = null
+    if (o.title) {
+      titleNode = typeof o.title === 'string'
+        ? h('span', { class: 'bd-dialog__title' }, o.title)
+        : isVNode(o.title) ? o.title
+        : Array.isArray(o.title) ? o.title
+        : h(o.title as any)
+    }
+
+    // 底部: actions 插槽优先
+    let footer: any = null
+    if (actionsSlot) {
+      footer = h('div', { class: 'bd-dialog__footer' }, actionsSlot)
+    } else if (actions.length > 0) {
+      footer = h('div', { class: 'bd-dialog__footer' },
+        actions.map((a, i) => renderBtn(a, close, i === actions.length - 1, i)))
+    }
+
+    box = h('div', {
+      class: ['bd-dialog', o.class, { 'bd-dialog--fullscreen': isFS }],
+      style: dStyle,
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-label': typeof o.title === 'string' ? o.title : undefined,
+      onClick: (e: MouseEvent) => e.stopPropagation(),
+    }, [
+      showClose && h('button', {
+        class: 'bd-dialog__close', type: 'button',
+        'aria-label': '关闭',
+        onClick: () => close({ source: 'close-btn', index: -1 }),
+      }, [h(XIcon)]),
+
+      titleNode && h('div', { class: 'bd-dialog__header' }, [titleNode]),
+      h('div', { class: 'bd-dialog__body' }, [body]),
+      footer,
+    ])
   }
 
   return h('div', {
@@ -440,26 +481,7 @@ function renderDialogBox(
     h(Transition, {
       name: `bd-${o.effect || effectForPos(pos)}`,
       appear: true,
-    }, () =>
-      h('div', {
-        class: ['bd-dialog', o.class, { 'bd-dialog--fullscreen': isFS }],
-        style: dStyle,
-        role: 'dialog',
-        'aria-modal': 'true',
-        'aria-label': typeof o.title === 'string' ? o.title : undefined,
-        onClick: (e: MouseEvent) => e.stopPropagation(),
-      }, [
-        showClose && h('button', {
-          class: 'bd-dialog__close', type: 'button',
-          'aria-label': '关闭',
-          onClick: () => close({ source: 'close-btn', index: -1 }),
-        }, [h(XIcon)]),
-
-        titleNode && h('div', { class: 'bd-dialog__header' }, [titleNode]),
-        h('div', { class: 'bd-dialog__body' }, [body]),
-        footer,
-      ]),
-    ),
+    }, () => box),
   ])
 }
 

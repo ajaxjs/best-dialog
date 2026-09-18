@@ -101,13 +101,17 @@ dialog.open({ content: '新内容' })      // 合并新选项
 dialog.close()                         // 关闭
 
 // ── 完全自定义 UI：直接传 VNode / 组件 ──
+// 组件完全替换 bd-dialog 卡片，结构为 .bd-overlay > 组件：
+// 保留遮罩 / 定位 / 动画 / ESC / overlayClose，其余 UI 全由组件决定
 import { h } from 'vue'
 import PostCard from './PostCard.vue'
 
 dialog.open(h(PostCard, { title: 'Post Card' }))
-// 等价于 dialog.open({ content: h(PostCard, { title: 'Post Card' }) })
 // 需在组件内部关闭时，把 close 作为 props 传入：
 // dialog.open(h(PostCard, { close: () => dialog.close() }))
+
+// 只自定义内容区域、保留内置卡片外壳（标题/关闭按钮/底部）时，用 content：
+dialog.open({ title: '标题', content: h(PostCard, { title: 'Post Card' }) })
 
 // ── 链式回调 ──
 dialog.open()
@@ -139,7 +143,7 @@ const close = showDialog({
 
 setTimeout(close, 3000)
 
-// 也可直接传 VNode / 组件，完全自定义弹窗 UI
+// 也可直接传 VNode / 组件，完全替换弹窗卡片（.bd-overlay > 组件）
 const close2 = showDialog(h(PostCard, { title: 'Post Card', close: () => close2() }))
 ```
 
